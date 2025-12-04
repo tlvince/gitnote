@@ -65,7 +65,7 @@ class StorageManager {
 
         gitManager.commitAll(
             prefs.usernameOrDefault(),
-            "commit from gitnote to update the repo of the app"
+            prefs.commitMessageUpdateRepoValue()
         ).onFailure {
             uiHelper.makeToast(it.message)
         }
@@ -145,7 +145,7 @@ class StorageManager {
         Log.d(TAG, "updateNote: new = $new")
 
         update(
-            commitMessage = "gitnote changed ${previous.relativePath}"
+            commitMessage = prefs.commitMessageNoteUpdateMessage(previous.relativePath)
         ) {
             dao.removeNote(previous)
             dao.insertNote(new)
@@ -185,7 +185,7 @@ class StorageManager {
         Log.d(TAG, "createNote: $note")
 
         update(
-            commitMessage = "gitnote created ${note.relativePath}"
+            commitMessage = prefs.commitMessageNoteCreateMessage(note.relativePath)
         ) {
             dao.insertNote(note)
 
@@ -211,7 +211,7 @@ class StorageManager {
 
         Log.d(TAG, "deleteNote: $note")
         update(
-            commitMessage = "gitnote deleted ${note.relativePath}"
+            commitMessage = prefs.commitMessageNoteDeleteMessage(note.relativePath)
         ) {
             dao.removeNote(note)
 
@@ -229,7 +229,7 @@ class StorageManager {
         Log.d(TAG, "deleteNotes: ${notes.size}")
 
         update(
-            commitMessage = "gitnote deleted ${notes.size} notes"
+            commitMessage = prefs.commitMessageNotesDeleteMessage(notes.size)
         ) {
             // optimization because we only see the db state on screen
             notes.forEach { note ->
@@ -257,7 +257,7 @@ class StorageManager {
         Log.d(TAG, "createNoteFolder: $noteFolder")
 
         update(
-            commitMessage = "gitnote created folder ${noteFolder.relativePath}"
+            commitMessage = prefs.commitMessageFolderCreateMessage(noteFolder.relativePath)
         ) {
             dao.insertNoteFolder(noteFolder)
 
@@ -276,7 +276,7 @@ class StorageManager {
         Log.d(TAG, "deleteNoteFolder: $noteFolder")
 
         update(
-            commitMessage = "gitnote deleted folder ${noteFolder.relativePath}"
+            commitMessage = prefs.commitMessageFolderDeleteMessage(noteFolder.relativePath)
         ) {
             dao.deleteNoteFolder(noteFolder)
 
@@ -308,7 +308,7 @@ class StorageManager {
 
         gitManager.commitAll(
             prefs.usernameOrDefault(),
-            "commit from gitnote, before doing a change"
+            prefs.commitMessageBeforeChangeValue()
         ).onFailure {
             return failure(it)
         }

@@ -250,6 +250,90 @@ fun SettingsScreen(
         }
 
         SettingsSection(
+            title = stringResource(R.string.git_commit_messages)
+        ) {
+            val commitBeforeChange by vm.prefs.commitMessageBeforeChange.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_before_change),
+                subtitle = stringResource(R.string.commit_message_before_change_description),
+                stringValue = commitBeforeChange,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageBeforeChange.update(updated) }
+                }
+            )
+
+            val commitUpdateRepo by vm.prefs.commitMessageUpdateRepo.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_update_repo),
+                subtitle = stringResource(R.string.commit_message_update_repo_description),
+                stringValue = commitUpdateRepo,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageUpdateRepo.update(updated) }
+                }
+            )
+
+            val commitNoteUpdate by vm.prefs.commitMessageNoteUpdate.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_note_update),
+                subtitle = stringResource(R.string.commit_message_note_update_description),
+                stringValue = commitNoteUpdate,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageNoteUpdate.update(updated) }
+                }
+            )
+
+            val commitNoteCreate by vm.prefs.commitMessageNoteCreate.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_note_create),
+                subtitle = stringResource(R.string.commit_message_note_create_description),
+                stringValue = commitNoteCreate,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageNoteCreate.update(updated) }
+                }
+            )
+
+            val commitNoteDelete by vm.prefs.commitMessageNoteDelete.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_note_delete),
+                subtitle = stringResource(R.string.commit_message_note_delete_description),
+                stringValue = commitNoteDelete,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageNoteDelete.update(updated) }
+                }
+            )
+
+            val commitNotesDelete by vm.prefs.commitMessageNotesDelete.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_notes_delete),
+                subtitle = stringResource(R.string.commit_message_notes_delete_description),
+                stringValue = commitNotesDelete,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageNotesDelete.update(updated) }
+                }
+            )
+
+            val commitFolderCreate by vm.prefs.commitMessageFolderCreate.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_folder_create),
+                subtitle = stringResource(R.string.commit_message_folder_create_description),
+                stringValue = commitFolderCreate,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageFolderCreate.update(updated) }
+                }
+            )
+
+            val commitFolderDelete by vm.prefs.commitMessageFolderDelete.getAsState()
+            StringSettings(
+                title = stringResource(R.string.commit_message_folder_delete),
+                subtitle = stringResource(R.string.commit_message_folder_delete_description),
+                stringValue = commitFolderDelete,
+                onChange = { updated ->
+                    vm.update { vm.prefs.commitMessageFolderDelete.update(updated) }
+                }
+            )
+        }
+
+        SettingsSection(
             title = stringResource(R.string.about),
             isLast = true
         ) {
@@ -313,4 +397,3 @@ fun SettingsScreen(
         }
     }
 }
-

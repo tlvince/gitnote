@@ -21,6 +21,15 @@ class AppPreferences(
         val appStorageRepoPath =
             MyApp.appModule.context.filesDir.toPath().resolve("repo").pathString
         const val DEFAULT_USERNAME = "gitnote"
+        const val DEFAULT_COMMIT_MESSAGE_BEFORE_CHANGE = "commit from gitnote, before doing a change"
+        const val DEFAULT_COMMIT_MESSAGE_UPDATE_REPO =
+            "commit from gitnote to update the repo of the app"
+        const val DEFAULT_COMMIT_MESSAGE_NOTE_UPDATE = "gitnote changed {path}"
+        const val DEFAULT_COMMIT_MESSAGE_NOTE_CREATE = "gitnote created {path}"
+        const val DEFAULT_COMMIT_MESSAGE_NOTE_DELETE = "gitnote deleted {path}"
+        const val DEFAULT_COMMIT_MESSAGE_NOTES_DELETE = "gitnote deleted {count} notes"
+        const val DEFAULT_COMMIT_MESSAGE_FOLDER_CREATE = "gitnote created folder {path}"
+        const val DEFAULT_COMMIT_MESSAGE_FOLDER_DELETE = "gitnote deleted folder {path}"
     }
 
     val dynamicColor = booleanPreference("dynamicColor", true)
@@ -64,6 +73,83 @@ class AppPreferences(
 
     val userPassUsername = stringPreference("userPassUsername", "")
     val userPassPassword = stringPreference("userPassPassword", "")
+
+    val commitMessageBeforeChange =
+        stringPreference("commitMessageBeforeChange", DEFAULT_COMMIT_MESSAGE_BEFORE_CHANGE)
+    val commitMessageUpdateRepo =
+        stringPreference("commitMessageUpdateRepo", DEFAULT_COMMIT_MESSAGE_UPDATE_REPO)
+    val commitMessageNoteUpdate =
+        stringPreference("commitMessageNoteUpdate", DEFAULT_COMMIT_MESSAGE_NOTE_UPDATE)
+    val commitMessageNoteCreate =
+        stringPreference("commitMessageNoteCreate", DEFAULT_COMMIT_MESSAGE_NOTE_CREATE)
+    val commitMessageNoteDelete =
+        stringPreference("commitMessageNoteDelete", DEFAULT_COMMIT_MESSAGE_NOTE_DELETE)
+    val commitMessageNotesDelete =
+        stringPreference("commitMessageNotesDelete", DEFAULT_COMMIT_MESSAGE_NOTES_DELETE)
+    val commitMessageFolderCreate =
+        stringPreference("commitMessageFolderCreate", DEFAULT_COMMIT_MESSAGE_FOLDER_CREATE)
+    val commitMessageFolderDelete =
+        stringPreference("commitMessageFolderDelete", DEFAULT_COMMIT_MESSAGE_FOLDER_DELETE)
+
+    private fun format(
+        template: String,
+        defaultValue: String,
+        replacements: Map<String, String>
+    ): String {
+        var res = template.ifEmpty { defaultValue }
+        replacements.forEach { (k, v) ->
+            res = res.replace("{$k}", v)
+        }
+        return res
+    }
+
+    suspend fun commitMessageBeforeChangeValue(): String =
+        commitMessageBeforeChange.get().ifEmpty { DEFAULT_COMMIT_MESSAGE_BEFORE_CHANGE }
+
+    suspend fun commitMessageUpdateRepoValue(): String =
+        commitMessageUpdateRepo.get().ifEmpty { DEFAULT_COMMIT_MESSAGE_UPDATE_REPO }
+
+    suspend fun commitMessageNoteUpdateMessage(relativePath: String): String =
+        format(
+            commitMessageNoteUpdate.get(),
+            DEFAULT_COMMIT_MESSAGE_NOTE_UPDATE,
+            mapOf("path" to relativePath)
+        )
+
+    suspend fun commitMessageNoteCreateMessage(relativePath: String): String =
+        format(
+            commitMessageNoteCreate.get(),
+            DEFAULT_COMMIT_MESSAGE_NOTE_CREATE,
+            mapOf("path" to relativePath)
+        )
+
+    suspend fun commitMessageNoteDeleteMessage(relativePath: String): String =
+        format(
+            commitMessageNoteDelete.get(),
+            DEFAULT_COMMIT_MESSAGE_NOTE_DELETE,
+            mapOf("path" to relativePath)
+        )
+
+    suspend fun commitMessageNotesDeleteMessage(count: Int): String =
+        format(
+            commitMessageNotesDelete.get(),
+            DEFAULT_COMMIT_MESSAGE_NOTES_DELETE,
+            mapOf("count" to count.toString())
+        )
+
+    suspend fun commitMessageFolderCreateMessage(relativePath: String): String =
+        format(
+            commitMessageFolderCreate.get(),
+            DEFAULT_COMMIT_MESSAGE_FOLDER_CREATE,
+            mapOf("path" to relativePath)
+        )
+
+    suspend fun commitMessageFolderDeleteMessage(relativePath: String): String =
+        format(
+            commitMessageFolderDelete.get(),
+            DEFAULT_COMMIT_MESSAGE_FOLDER_DELETE,
+            mapOf("path" to relativePath)
+        )
 
     val sshUsername = stringPreference("sshUsername", "")
     val publicKey = stringPreference("publicKey", "")
@@ -167,4 +253,3 @@ enum class StorageConfig {
     App,
     Device
 }
-
