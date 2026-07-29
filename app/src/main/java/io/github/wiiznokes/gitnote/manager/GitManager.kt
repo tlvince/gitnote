@@ -55,7 +55,11 @@ class GitManager {
         private set
     private var isLibInitialized = false
 
-    private suspend fun <T> safelyAccessLibGit2(f: suspend () -> T): Result<T> = locker.withLock {
+    private suspend fun <T> safelyAccessLibGit2(
+        operation: String,
+        f: suspend () -> T
+    ): Result<T> = locker.withLock {
+        Log.d(TAG, "safelyAccessLibGit2: $operation (isRepoInitialized=$isRepoInitialized, isLibInitialized=$isLibInitialized)")
         try {
             if (!isLibInitialized) {
                 val res = initLib()
@@ -67,33 +71,41 @@ class GitManager {
             }
             success(f())
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.w(TAG, "safelyAccessLibGit2: operation '$operation' failed", e)
             failure(e)
         }
     }
 
 
-    suspend fun createRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun createRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2("createRepo") {
         Log.d(TAG, "create repo: $repoPath")
 
-        if (isRepoInitialized) throw GitException(GitExceptionType.RepoAlreadyInit)
+        if (isRepoInitialized) {
+            Log.w(TAG, "createRepo: repo already initialized, throwing RepoAlreadyInit")
+            throw GitException(GitExceptionType.RepoAlreadyInit)
+        }
 
         val res = createRepoLib(repoPath)
         if (res < 0) {
             throw GitException(uiHelper.getString(R.string.error_create_repo, res.toString()))
         }
+        Log.d(TAG, "createRepo: repo created successfully, setting isRepoInitialized=true")
         isRepoInitialized = true
     }
 
 
-    suspend fun openRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun openRepo(repoPath: String): Result<Unit> = safelyAccessLibGit2("openRepo") {
         Log.d(TAG, "open repo: $repoPath")
-        if (isRepoInitialized) return@safelyAccessLibGit2
+        if (isRepoInitialized) {
+            Log.d(TAG, "openRepo: already initialized, skipping")
+            return@safelyAccessLibGit2
+        }
 
         val res = openRepoLib(repoPath)
         if (res < 0) {
             throw GitException(uiHelper.getString(R.string.error_open_repo, res))
         }
+        Log.d(TAG, "openRepo: repo opened successfully, setting isRepoInitialized=true")
         isRepoInitialized = true
     }
 
@@ -112,10 +124,13 @@ class GitManager {
         repoUrl: String,
         cred: Cred?,
         progressCallback: (Int) -> Boolean
-    ): Result<Unit> = safelyAccessLibGit2 {
+    ): Result<Unit> = safelyAccessLibGit2("cloneRepo") {
         Log.d(TAG, "clone repo: $repoPath, $repoUrl, $cred")
 
-        if (isRepoInitialized) throw GitException(GitExceptionType.RepoAlreadyInit)
+        if (isRepoInitialized) {
+            Log.w(TAG, "cloneRepo: repo already initialized, throwing RepoAlreadyInit")
+            throw GitException(GitExceptionType.RepoAlreadyInit)
+        }
 
         actualCb = progressCallback
 
@@ -132,20 +147,27 @@ class GitManager {
             throw GitException(uiHelper.getString(R.string.error_clone_repo, res))
         }
 
+        Log.d(TAG, "cloneRepo: repo cloned successfully, setting isRepoInitialized=true")
         isRepoInitialized = true
 
     }
 
     // todo: update this shit
-    suspend fun lastCommit(): String = safelyAccessLibGit2 {
+    suspend fun lastCommit(): String = safelyAccessLibGit2("lastCommit") {
         Log.d(TAG, "last commit")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        if (!isRepoInitialized) {
+            Log.w(TAG, "lastCommit: isRepoInitialized is false, throwing RepoNotInit")
+            throw GitException(GitExceptionType.RepoNotInit)
+        }
         lastCommitLib()
     }.getOrDefault("") ?: ""
 
-    suspend fun commitAll(author: GitAuthor, message: String): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun commitAll(author: GitAuthor, message: String): Result<Unit> = safelyAccessLibGit2("commitAll") {
         Log.d(TAG, "commit all: ${author.name}")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        if (!isRepoInitialized) {
+            Log.w(TAG, "commitAll: isRepoInitialized is false, throwing RepoNotInit")
+            throw GitException(GitExceptionType.RepoNotInit)
+        }
 
         var res = isChangeLib()
 
@@ -166,16 +188,22 @@ class GitManager {
 
     }
 
-    suspend fun currentSignature(): GitAuthor? = safelyAccessLibGit2 {
+    suspend fun currentSignature(): GitAuthor? = safelyAccessLibGit2("currentSignature") {
         Log.d(TAG, "currentSignature")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        if (!isRepoInitialized) {
+            Log.w(TAG, "currentSignature: isRepoInitialized is false, throwing RepoNotInit")
+            throw GitException(GitExceptionType.RepoNotInit)
+        }
 
         currentSignatureLib()
     }.getOrNull()?.let { GitAuthor(name = it.first, email = it.second) }
 
-    suspend fun push(cred: Cred?): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun push(cred: Cred?): Result<Unit> = safelyAccessLibGit2("push") {
         Log.d(TAG, "push: $cred")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        if (!isRepoInitialized) {
+            Log.w(TAG, "push: isRepoInitialized is false, throwing RepoNotInit")
+            throw GitException(GitExceptionType.RepoNotInit)
+        }
         val res = pushLib(cred)
 
         if (res < 0) {
@@ -188,9 +216,12 @@ class GitManager {
 
     }
 
-    suspend fun pull(cred: Cred?, author: GitAuthor): Result<Unit> = safelyAccessLibGit2 {
+    suspend fun pull(cred: Cred?, author: GitAuthor): Result<Unit> = safelyAccessLibGit2("pull") {
         Log.d(TAG, "pull: $cred")
-        if (!isRepoInitialized) throw GitException(GitExceptionType.RepoNotInit)
+        if (!isRepoInitialized) {
+            Log.w(TAG, "pull: isRepoInitialized is false, throwing RepoNotInit")
+            throw GitException(GitExceptionType.RepoNotInit)
+        }
 
         val res = pullLib(cred, author.name, author.email)
 
@@ -199,8 +230,12 @@ class GitManager {
         }
     }
 
-    suspend fun getTimestamps(): Result<HashMap<String, Long>> = safelyAccessLibGit2 {
-        Log.d(TAG, "getTimestamps")
+    suspend fun getTimestamps(): Result<HashMap<String, Long>> = safelyAccessLibGit2("getTimestamps") {
+        Log.d(TAG, "getTimestamps (isRepoInitialized=$isRepoInitialized)")
+        if (!isRepoInitialized) {
+            Log.w(TAG, "getTimestamps: isRepoInitialized is false, throwing RepoNotInit")
+            throw GitException(GitExceptionType.RepoNotInit)
+        }
 
         val h: HashMap<String, Long> = HashMap()
 
@@ -214,15 +249,21 @@ class GitManager {
 
 
     fun closeRepoWithoutLock() {
-        if (isRepoInitialized) closeRepoLib()
+        Log.w(TAG, "closeRepoWithoutLock: isRepoInitialized=$isRepoInitialized", RuntimeException("stack trace"))
+        if (isRepoInitialized) {
+            closeRepoLib()
+            Log.d(TAG, "closeRepoWithoutLock: called closeRepoLib")
+        }
         isRepoInitialized = false
     }
 
-    suspend fun closeRepo() = safelyAccessLibGit2 {
+    suspend fun closeRepo() = safelyAccessLibGit2("closeRepo") {
+        Log.d(TAG, "closeRepo called")
         closeRepoWithoutLock()
     }
 
-    suspend fun shutdown() = safelyAccessLibGit2 {
+    suspend fun shutdown() = safelyAccessLibGit2("shutdown") {
+        Log.d(TAG, "shutdown called")
         closeRepoWithoutLock()
         if (isLibInitialized) freeLib()
         isLibInitialized = false

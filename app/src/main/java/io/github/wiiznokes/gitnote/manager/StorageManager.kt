@@ -65,45 +65,52 @@ class StorageManager {
 
 
     suspend fun updateDatabaseAndRepo(): Result<Unit> = locker.withLock {
-        Log.d(TAG, "updateDatabaseAndRepo")
+        Log.d(TAG, "updateDatabaseAndRepo: isRepoInitialized=${gitManager.isRepoInitialized}, remoteUrl=${prefs.remoteUrl.get()}")
 
         val cred = prefs.cred()
         val remoteUrl = prefs.remoteUrl.get()
         val author = prefs.gitAuthor()
         var isError = false
 
+        Log.d(TAG, "updateDatabaseAndRepo: starting commitAll")
         gitManager.commitAll(
             author,
             "commit from gitnote to update the repo of the app"
         ).onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
+            Log.e(TAG, "updateDatabaseAndRepo: commitAll failed: ${err.message}")
             _syncState.emit(SyncState.Error(err.message))
             return@withLock failure(err)
         }
+        Log.d(TAG, "updateDatabaseAndRepo: commitAll done")
 
         if (remoteUrl.isNotEmpty()) {
+            Log.d(TAG, "updateDatabaseAndRepo: starting pull")
             _syncState.emit(SyncState.Pull)
             gitManager.pull(cred, author).onFailure { err ->
                 isError = true
-                err.message?.let { Log.e(TAG, it) }
+                Log.e(TAG, "updateDatabaseAndRepo: pull failed: ${err.message}")
                 _syncState.emit(SyncState.Error(err.message))
             }
+            Log.d(TAG, "updateDatabaseAndRepo: pull done")
         }
 
         if (remoteUrl.isNotEmpty()) {
+            Log.d(TAG, "updateDatabaseAndRepo: starting push")
             _syncState.emit(SyncState.Push)
             // todo: maybe async this call
             gitManager.push(cred).onFailure { err ->
                 isError = true
-                err.message?.let { Log.e(TAG, it) }
+                Log.e(TAG, "updateDatabaseAndRepo: push failed: ${err.message}")
                 _syncState.emit(SyncState.Error(err.message))
             }
+            Log.d(TAG, "updateDatabaseAndRepo: push done")
         }
 
         if (!isError)
             _syncState.emit(SyncState.Ok(false))
 
         updateDatabaseWithoutLocker()
+        Log.d(TAG, "updateDatabaseAndRepo: done")
 
         return success(Unit)
     }
@@ -126,7 +133,10 @@ class StorageManager {
         val fsCommit = gitManager.lastCommit()
         val databaseCommit = prefs.databaseCommit.get()
 
-        Log.d(TAG, "fsCommit: $fsCommit, databaseCommit: $databaseCommit")
+        Log.d(TAG, "fsCommit: '$fsCommit', databaseCommit: '$databaseCommit'")
+        if (fsCommit.isEmpty()) {
+            Log.w(TAG, "updateDatabaseWithoutLocker: fsCommit is empty — isRepoInitialized may be false (value=${gitManager.isRepoInitialized})")
+        }
         if (!force && fsCommit == databaseCommit) {
             Log.d(TAG, "last commit is already loaded in data base")
             return success(Unit)
@@ -309,6 +319,7 @@ class StorageManager {
     }
 
     suspend fun closeRepo() = locker.withLock {
+        Log.w(TAG, "closeRepo called", RuntimeException("stack trace"))
         prefs.closeRepo()
         gitManager.closeRepo()
         dao.clearDatabase()
@@ -320,35 +331,43 @@ class StorageManager {
         f: suspend () -> Result<T>
     ): Result<T> {
 
+        Log.d(TAG, "update: commitMessage=$commitMessage, isRepoInitialized=${gitManager.isRepoInitialized}")
+
         val cred = prefs.cred()
         val remoteUrl = prefs.remoteUrl.get()
         val author = prefs.gitAuthor()
 
         var isError = false
 
+        Log.d(TAG, "update: committing before change")
         gitManager.commitAll(
             author,
             "commit from gitnote, before doing a change"
         ).onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
+            Log.e(TAG, "update: commitAll (before) failed: ${err.message}")
             _syncState.emit(SyncState.Error(err.message))
             return failure(err)
         }
+        Log.d(TAG, "update: commitAll (before) done")
 
         if (remoteUrl.isNotEmpty()) {
+            Log.d(TAG, "update: starting pull")
             _syncState.emit(SyncState.Pull)
             gitManager.pull(cred, author).onFailure { err ->
                 isError = true
-                err.message?.let { Log.e(TAG, it) }
+                Log.e(TAG, "update: pull failed: ${err.message}")
                 _syncState.emit(SyncState.Error(err.message))
             }
+            Log.d(TAG, "update: pull done")
         }
 
+        Log.d(TAG, "update: updating database")
         updateDatabaseWithoutLocker().onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
+            Log.e(TAG, "update: updateDatabaseWithoutLocker failed: ${err.message}")
             _syncState.emit(SyncState.Error(err.message))
             return failure(err)
         }
+        Log.d(TAG, "update: database update done")
 
         val payload = f().fold(
             onFailure = { err ->
@@ -360,21 +379,25 @@ class StorageManager {
             }
         )
 
+        Log.d(TAG, "update: committing after change")
         gitManager.commitAll(author, commitMessage).onFailure { err ->
-            err.message?.let { Log.e(TAG, it) }
+            Log.e(TAG, "update: commitAll (after) failed: ${err.message}")
             _syncState.emit(SyncState.Error(err.message))
             return failure(err)
         }
+        Log.d(TAG, "update: commitAll (after) done")
 
         prefs.databaseCommit.update(gitManager.lastCommit())
 
         if (remoteUrl.isNotEmpty()) {
+            Log.d(TAG, "update: starting push")
             _syncState.emit(SyncState.Push)
             gitManager.push(cred).onFailure { err ->
                 isError = true
-                err.message?.let { Log.e(TAG, it) }
+                Log.e(TAG, "update: push failed: ${err.message}")
                 _syncState.emit(SyncState.Error(err.message))
             }
+            Log.d(TAG, "update: push done")
         }
 
         if (!isError)
